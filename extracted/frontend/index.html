@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voice Integrity Guard — Live Call Monitor</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <div class="brand-title">Voice Integrity Guard</div>
+        <div class="brand-sub">Real-time voice cloning &amp; impersonation detection</div>
+      </div>
+    </div>
+    <div class="session-pill" id="sessionPill">no active session</div>
+  </header>
+
+  <main class="grid">
+
+    <!-- Left: call intake + controls -->
+    <section class="panel intake">
+      <h2>Analyze a call</h2>
+      <p class="muted">Upload a short voice clip to run a one-shot check, or stream it to simulate a live call with continuously updating risk.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="audio/*" hidden />
+        <span id="dropzoneLabel">Choose an audio file (wav / mp3 / flac)</span>
+      </label>
+
+      <div class="context-toggles">
+        <div class="toggle-row">
+          <label><input type="checkbox" id="ctxUnknown" /> Unknown / unverified caller</label>
+        </div>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="ctxHighValue" /> High-value transaction requested</label>
+        </div>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="ctxPrivileged" /> Privileged action (OTP / fund transfer / access)</label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" id="analyzeBtn" disabled>Run one-shot analysis</button>
+        <button class="btn ghost" id="streamBtn" disabled>Simulate live call</button>
+        <button class="btn ghost" id="stopBtn" disabled>Stop</button>
+      </div>
+
+      <div class="mic-section">
+        <div class="mic-divider"><span>or</span></div>
+        <button class="btn mic" id="micBtn">🎙 Test with your microphone</button>
+        <div class="mic-timer" id="micTimer"></div>
+      </div>
+
+      <div class="status-line" id="statusLine">Waiting for audio…</div>
+    </section>
+
+    <!-- Center: live risk gauge -->
+    <section class="panel gauge-panel">
+      <h2>Impersonation risk</h2>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 200 120" class="gauge">
+          <path d="M20 100 A80 80 0 0 1 180 100" class="gauge-track" />
+          <path d="M20 100 A80 80 0 0 1 180 100" class="gauge-fill" id="gaugeFill" />
+          <text x="100" y="88" text-anchor="middle" class="gauge-number" id="gaugeNumber">--</text>
+          <text x="100" y="106" text-anchor="middle" class="gauge-label" id="gaugeLevel">no data</text>
+        </svg>
+      </div>
+      <div class="recommendation" id="recommendation">Run an analysis to see a recommendation here.</div>
+
+      <div class="score-history">
+        <div class="score-history-label">Running risk over time</div>
+        <div class="bars" id="scoreBars"></div>
+      </div>
+    </section>
+
+    <!-- Right: feature breakdown + alerts -->
+    <section class="panel side">
+      <div class="side-block">
+        <h2>Signal breakdown</h2>
+        <div class="feature-list" id="featureList">
+          <div class="muted small">No sample analyzed yet.</div>
+        </div>
+      </div>
+      <div class="side-block">
+        <h2>Alert log</h2>
+        <div class="alert-list" id="alertList">
+          <div class="muted small">No alerts raised.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    Feature-only logging · raw audio never stored · session auto-expires after 30 min
+  </footer>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
