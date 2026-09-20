@@ -159,6 +159,9 @@ analyzeBtn.addEventListener("click", async () => {
 });
 
 // ---------------- Streaming simulation over WebSocket ----------------
+// Decodes the uploaded file client-side, resamples to 16kHz mono, and
+// streams it to the backend in ~2s chunks at real-time pace -- simulating
+// what a live telephony/VoIP tap would send.
 
 streamBtn.addEventListener("click", async () => {
   if (!currentFile) return;
@@ -182,7 +185,7 @@ streamBtn.addEventListener("click", async () => {
   src.connect(offlineCtx.destination);
   src.start();
   const resampled = await offlineCtx.startRendering();
-  const pcm = resampled.getChannelData(0);
+  const pcm = resampled.getChannelData(0); // Float32Array, mono, 16kHz
 
   ws = new WebSocket(`${WS_BASE}/ws/stream/${sessionId}`);
   ws.binaryType = "arraybuffer";
@@ -259,6 +262,11 @@ stopBtn.addEventListener("click", () => {
 });
 
 // ---------------- Live microphone testing ----------------
+// Captures real audio straight from the browser's microphone, resamples
+// each ~2s window to 16kHz, and streams it through the same /ws/stream
+// pipeline used by the file-based "Simulate live call" feature -- so a
+// user can speak into their own mic and see a live risk score on their
+// own voice, not just pre-made sample files.
 
 micBtn.addEventListener("click", async () => {
   if (!micRecording) {
@@ -290,6 +298,8 @@ async function startMicStream() {
 
   micAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
   micSource = micAudioCtx.createMediaStreamSource(micStream);
+  // ScriptProcessorNode is deprecated but has the broadest browser support
+  // for raw PCM capture without extra worklet files -- fine for this use.
   micProcessor = micAudioCtx.createScriptProcessor(4096, 1, 1);
   micBuffer = [];
 
@@ -297,6 +307,8 @@ async function startMicStream() {
     micBuffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
   };
 
+  // route through a silent gain node instead of straight to the speakers,
+  // so the user doesn't hear their own mic echoed back
   const silentGain = micAudioCtx.createGain();
   silentGain.gain.value = 0;
   micSource.connect(micProcessor);
@@ -391,3 +403,4 @@ function stopMicStream() {
   }
   statusLine.textContent = "Microphone recording stopped.";
 }
+ 

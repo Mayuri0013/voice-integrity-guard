@@ -91,7 +91,7 @@ async def analyze(
 def alerts(session_id: str):
     return {"session_id": session_id, "alerts": get_alerts(session_id)}
 
-
+ 
 @app.get("/api/history/{session_id}")
 def history(session_id: str):
     return {"session_id": session_id, "history": get_session_history(session_id)}
