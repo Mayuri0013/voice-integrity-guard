@@ -78,7 +78,7 @@ function renderFeatureBreakdown(breakdown) {
     .forEach(([name, val]) => {
       const row = document.createElement("div");
       row.className = "feature-row";
-      row.innerHTML = `<span class="fname">${prettyName(name)}</span><span class="fval">${val}</span>`;
+      row.innerHTML = `<span class="fname">${prettyName(name)}</span><span class="fval">${Number(val).toFixed(3)}</span>`;
       featureList.appendChild(row);
     });
 }
@@ -165,14 +165,15 @@ function handleStreamMessage(event) {
   }
 }
  
-
-micBtn.addEventListener("click", async () => {
-  if (!micRecording) {
-    await startMicStream();
-  } else {
-    stopMicStream();
-  }
-});
+if (micBtn) {
+  micBtn.addEventListener("click", async () => {
+    if (!micRecording) {
+      await startMicStream();
+    } else {
+      stopMicStream();
+    }
+  });
+}
 
 async function startMicStream() {
   try {

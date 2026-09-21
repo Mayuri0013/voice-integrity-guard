@@ -218,7 +218,13 @@ def compute_risk(features: dict, context: dict | None = None, raw_audio=None, sr
         "ml_score": round(ml_score, 1) if ml_score is not None else None,
         "ml_source": ml_source,  # "dhwani" (real model) | "placeholder" | None
         "context_boost": ctx_boost,
-        "feature_breakdown": breakdown,
+        "feature_breakdown": {
+    "jitter_proxy": features.get("jitter_proxy", 0),
+    "shimmer_proxy": features.get("shimmer_proxy", 0),
+    "pitch_std_hz": features.get("pitch_std_hz", 0),
+    "spectral_flatness_mean": features.get("spectral_flatness_mean", 0),
+    "zcr_std": features.get("zcr_std", 0),
+},
         "recommendation": recommendation,
         "insufficient_audio": False,
     }
