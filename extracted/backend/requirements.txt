@@ -9,3 +9,5 @@ python-multipart==0.0.9
 soundfile==0.12.1
 websockets==13.0
 pydantic==2.8.2
+onnxruntime==1.19.2
+speechbrain==1.1.1

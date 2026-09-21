@@ -33,23 +33,9 @@
         <span id="dropzoneLabel">Choose an audio file (wav / mp3 / flac)</span>
       </label>
 
-      <div class="context-toggles">
-        <div class="toggle-row">
-          <label><input type="checkbox" id="ctxUnknown" /> Unknown / unverified caller</label>
-        </div>
-        <div class="toggle-row">
-          <label><input type="checkbox" id="ctxHighValue" /> High-value transaction requested</label>
-        </div>
-        <div class="toggle-row">
-          <label><input type="checkbox" id="ctxPrivileged" /> Privileged action (OTP / fund transfer / access)</label>
-        </div>
-      </div>
-
       <div class="btn-row">
-        <button class="btn primary" id="analyzeBtn" disabled>Run one-shot analysis</button>
-        <button class="btn ghost" id="streamBtn" disabled>Simulate live call</button>
-        <button class="btn ghost" id="stopBtn" disabled>Stop</button>
-      </div>
+  <button class="btn primary" id="analyzeBtn" disabled>Run one-shot analysis</button>
+</div>
 
       <div class="mic-section">
         <div class="mic-divider"><span>or</span></div>
@@ -97,7 +83,53 @@
 
   </main>
 
-   
+  <!-- Voice comparison: does the test clip match the reference speaker, combined with AI-risk on each -->
+  <section class="panel compare-panel">
+    <h2>Voice comparison — same speaker check</h2>
+    <p class="muted">Upload a known-genuine reference sample and a test sample (e.g. a suspected clone) to check whether they're the same speaker, combined with each clip's own AI-generation risk. A clone attack is strongest when the voices match AND the test clip looks synthetic.</p>
+
+    <div class="compare-grid">
+      <div class="compare-col">
+        <label class="dropzone small" id="genuineDropzone">
+          <input type="file" id="genuineFileInput" accept="audio/*" hidden />
+          <span id="genuineDropzoneLabel">Genuine reference voice</span>
+        </label>
+      </div>
+      <div class="compare-col">
+        <label class="dropzone small" id="testDropzone">
+          <input type="file" id="testFileInput" accept="audio/*" hidden />
+          <span id="testDropzoneLabel">Test / suspected clone voice</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn primary" id="compareBtn" disabled>Compare voices</button>
+    </div>
+    <div class="status-line" id="compareStatus">Upload both samples to compare.</div>
+
+    <div class="compare-result" id="compareResult" style="display:none;">
+      <div class="compare-verdict-banner" id="compareVerdictBanner">
+        <div class="compare-verdict-text" id="compareVerdictText">--</div>
+        <div class="compare-explanation" id="compareExplanation"></div>
+      </div>
+      <div class="compare-details-grid">
+        <div class="compare-detail-card">
+          <div class="compare-detail-label">Voice similarity</div>
+          <div class="compare-detail-value" id="compareSimilarity">--</div>
+          <div class="compare-detail-sub" id="compareSameSpeaker"></div>
+        </div>
+        <div class="compare-detail-card">
+          <div class="compare-detail-label">Reference clip AI-risk</div>
+          <div class="compare-detail-value" id="compareGenuineRisk">--</div>
+        </div>
+        <div class="compare-detail-card">
+          <div class="compare-detail-label">Test clip AI-risk</div>
+          <div class="compare-detail-value" id="compareTestRisk">--</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <footer class="footer">
     Feature-only logging · raw audio never stored · session auto-expires after 30 min

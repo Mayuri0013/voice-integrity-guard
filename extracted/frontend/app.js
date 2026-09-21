@@ -5,8 +5,7 @@ const fileInput = document.getElementById("fileInput");
 const dropzone = document.getElementById("dropzone");
 const dropzoneLabel = document.getElementById("dropzoneLabel");
 const analyzeBtn = document.getElementById("analyzeBtn");
-const streamBtn = document.getElementById("streamBtn");
-const stopBtn = document.getElementById("stopBtn");
+ 
 const micBtn = document.getElementById("micBtn");
 const micTimer = document.getElementById("micTimer");
 const statusLine = document.getElementById("statusLine");
@@ -25,7 +24,6 @@ let currentFile = null;
 let ws = null;
 let scoreHistory = [];
 
-// mic-recording state
 let micStream = null;
 let micAudioCtx = null;
 let micProcessor = null;
@@ -108,8 +106,6 @@ function addAlert(alert) {
   alertList.prepend(row);
 }
 
-// ---------------- File selection ----------------
-
 dropzone.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", () => {
   if (fileInput.files.length) {
@@ -117,12 +113,10 @@ fileInput.addEventListener("change", () => {
     dropzoneLabel.textContent = currentFile.name;
     dropzone.classList.add("has-file");
     analyzeBtn.disabled = false;
-    streamBtn.disabled = false;
-    statusLine.textContent = "Ready. Choose one-shot analysis or simulate a live call.";
+ 
+    statusLine.textContent = "Ready. Choose an audio file to analyze.";
   }
 });
-
-// ---------------- One-shot REST analysis ----------------
 
 analyzeBtn.addEventListener("click", async () => {
   if (!currentFile) return;
@@ -131,9 +125,7 @@ analyzeBtn.addEventListener("click", async () => {
 
   const form = new FormData();
   form.append("file", currentFile);
-  form.append("unknown_caller", document.getElementById("ctxUnknown").checked);
-  form.append("high_value_transaction", document.getElementById("ctxHighValue").checked);
-  form.append("privileged_request", document.getElementById("ctxPrivileged").checked);
+   
 
   try {
     const res = await fetch(`${API_BASE}/api/analyze`, { method: "POST", body: form });
@@ -157,82 +149,7 @@ analyzeBtn.addEventListener("click", async () => {
     analyzeBtn.disabled = false;
   }
 });
-
-// ---------------- Streaming simulation over WebSocket ----------------
-// Decodes the uploaded file client-side, resamples to 16kHz mono, and
-// streams it to the backend in ~2s chunks at real-time pace -- simulating
-// what a live telephony/VoIP tap would send.
-
-streamBtn.addEventListener("click", async () => {
-  if (!currentFile) return;
-  streamBtn.disabled = true;
-  stopBtn.disabled = false;
-  statusLine.textContent = "Decoding audio…";
-  scoreHistory = [];
-  scoreBars.innerHTML = "";
-
-  const sessionId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`;
-  sessionPill.textContent = `session ${sessionId.slice(0, 8)} · streaming`;
-
-  const arrayBuffer = await currentFile.arrayBuffer();
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
-
-  const targetRate = 16000;
-  const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
-  const src = offlineCtx.createBufferSource();
-  src.buffer = decoded;
-  src.connect(offlineCtx.destination);
-  src.start();
-  const resampled = await offlineCtx.startRendering();
-  const pcm = resampled.getChannelData(0); // Float32Array, mono, 16kHz
-
-  ws = new WebSocket(`${WS_BASE}/ws/stream/${sessionId}`);
-  ws.binaryType = "arraybuffer";
-
-  ws.onopen = () => {
-    statusLine.textContent = "Streaming live — analyzing ~2s windows as they arrive.";
-    ws.send(JSON.stringify({
-      type: "context",
-      context: {
-        unknown_caller: document.getElementById("ctxUnknown").checked,
-        high_value_transaction: document.getElementById("ctxHighValue").checked,
-        privileged_request: document.getElementById("ctxPrivileged").checked,
-      },
-    }));
-
-    const chunkSeconds = 2.0;
-    const chunkSize = Math.floor(chunkSeconds * targetRate);
-    let offset = 0;
-
-    const interval = setInterval(() => {
-      if (ws.readyState !== WebSocket.OPEN) {
-        clearInterval(interval);
-        return;
-      }
-      if (offset >= pcm.length) {
-        ws.send(JSON.stringify({ type: "end" }));
-        clearInterval(interval);
-        return;
-      }
-      const slice = pcm.slice(offset, offset + chunkSize);
-      offset += chunkSize;
-      ws.send(slice.buffer);
-    }, chunkSeconds * 1000);
-
-    ws._interval = interval;
-  };
-
-  ws.onmessage = handleStreamMessage;
-
-  ws.onclose = () => {
-    streamBtn.disabled = false;
-    stopBtn.disabled = true;
-    statusLine.textContent = "Stream ended.";
-    if (ws._interval) clearInterval(ws._interval);
-  };
-});
-
+ 
 function handleStreamMessage(event) {
   const msg = JSON.parse(event.data);
   if (msg.type === "risk_update") {
@@ -247,26 +164,7 @@ function handleStreamMessage(event) {
     statusLine.textContent = `Stream error: ${msg.message}`;
   }
 }
-
-stopBtn.addEventListener("click", () => {
-  if (ws) {
-    if (ws._interval) clearInterval(ws._interval);
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "end" }));
-      ws.close();
-    }
-  }
-  if (micRecording) stopMicStream();
-  streamBtn.disabled = !currentFile;
-  stopBtn.disabled = true;
-});
-
-// ---------------- Live microphone testing ----------------
-// Captures real audio straight from the browser's microphone, resamples
-// each ~2s window to 16kHz, and streams it through the same /ws/stream
-// pipeline used by the file-based "Simulate live call" feature -- so a
-// user can speak into their own mic and see a live risk score on their
-// own voice, not just pre-made sample files.
+ 
 
 micBtn.addEventListener("click", async () => {
   if (!micRecording) {
@@ -288,8 +186,7 @@ async function startMicStream() {
   micBtn.classList.add("recording");
   micBtn.textContent = "⏹ Stop recording";
   analyzeBtn.disabled = true;
-  streamBtn.disabled = true;
-  stopBtn.disabled = false;
+  
   scoreHistory = [];
   scoreBars.innerHTML = "";
 
@@ -298,8 +195,6 @@ async function startMicStream() {
 
   micAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
   micSource = micAudioCtx.createMediaStreamSource(micStream);
-  // ScriptProcessorNode is deprecated but has the broadest browser support
-  // for raw PCM capture without extra worklet files -- fine for this use.
   micProcessor = micAudioCtx.createScriptProcessor(4096, 1, 1);
   micBuffer = [];
 
@@ -307,8 +202,6 @@ async function startMicStream() {
     micBuffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
   };
 
-  // route through a silent gain node instead of straight to the speakers,
-  // so the user doesn't hear their own mic echoed back
   const silentGain = micAudioCtx.createGain();
   silentGain.gain.value = 0;
   micSource.connect(micProcessor);
@@ -321,11 +214,7 @@ async function startMicStream() {
   micWs.onopen = () => {
     micWs.send(JSON.stringify({
       type: "context",
-      context: {
-        unknown_caller: document.getElementById("ctxUnknown").checked,
-        high_value_transaction: document.getElementById("ctxHighValue").checked,
-        privileged_request: document.getElementById("ctxPrivileged").checked,
-      },
+      context: { },
     }));
   };
   micWs.onmessage = handleStreamMessage;
@@ -380,8 +269,7 @@ function stopMicStream() {
   micBtn.classList.remove("recording");
   micBtn.textContent = "🎙 Test with your microphone";
   analyzeBtn.disabled = !currentFile;
-  streamBtn.disabled = !currentFile;
-  stopBtn.disabled = true;
+   
   micTimer.textContent = "";
 
   if (micChunkInterval) clearInterval(micChunkInterval);
@@ -403,4 +291,92 @@ function stopMicStream() {
   }
   statusLine.textContent = "Microphone recording stopped.";
 }
- 
+
+const genuineDropzone = document.getElementById("genuineDropzone");
+const genuineFileInput = document.getElementById("genuineFileInput");
+const genuineDropzoneLabel = document.getElementById("genuineDropzoneLabel");
+const testDropzone = document.getElementById("testDropzone");
+const testFileInput = document.getElementById("testFileInput");
+const testDropzoneLabel = document.getElementById("testDropzoneLabel");
+const compareBtn = document.getElementById("compareBtn");
+const compareStatus = document.getElementById("compareStatus");
+const compareResult = document.getElementById("compareResult");
+const compareVerdictBanner = document.getElementById("compareVerdictBanner");
+const compareVerdictText = document.getElementById("compareVerdictText");
+const compareExplanation = document.getElementById("compareExplanation");
+const compareSimilarity = document.getElementById("compareSimilarity");
+const compareSameSpeaker = document.getElementById("compareSameSpeaker");
+const compareGenuineRisk = document.getElementById("compareGenuineRisk");
+const compareTestRisk = document.getElementById("compareTestRisk");
+
+let genuineFile = null;
+let compareTestFile = null;
+
+genuineDropzone.addEventListener("click", () => genuineFileInput.click());
+genuineFileInput.addEventListener("change", () => {
+  if (genuineFileInput.files.length) {
+    genuineFile = genuineFileInput.files[0];
+    genuineDropzoneLabel.textContent = genuineFile.name;
+    genuineDropzone.classList.add("has-file");
+    updateCompareBtnState();
+  }
+});
+
+testDropzone.addEventListener("click", () => testFileInput.click());
+testFileInput.addEventListener("change", () => {
+  if (testFileInput.files.length) {
+    compareTestFile = testFileInput.files[0];
+    testDropzoneLabel.textContent = compareTestFile.name;
+    testDropzone.classList.add("has-file");
+    updateCompareBtnState();
+  }
+});
+
+function updateCompareBtnState() {
+  compareBtn.disabled = !(genuineFile && compareTestFile);
+  if (genuineFile && compareTestFile) {
+    compareStatus.textContent = "Ready to compare.";
+  }
+}
+
+compareBtn.addEventListener("click", async () => {
+  if (!genuineFile || !compareTestFile) return;
+  compareBtn.disabled = true;
+  compareStatus.textContent = "Comparing voices — this can take a few seconds…";
+
+  const form = new FormData();
+  form.append("genuine_file", genuineFile);
+  form.append("test_file", compareTestFile);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/compare-voices`, { method: "POST", body: form });
+    const data = await res.json();
+
+    if (data.error) {
+      compareStatus.textContent = `Error: ${data.error}`;
+      compareBtn.disabled = false;
+      return;
+    }
+
+    compareResult.style.display = "block";
+
+    const levelClass = data.verdict_level ? data.verdict_level.toLowerCase() : "low";
+    compareVerdictBanner.className = `compare-verdict-banner ${levelClass}`;
+    compareVerdictText.textContent = data.verdict;
+    compareExplanation.textContent = data.explanation;
+
+    compareSimilarity.textContent = `${data.similarity_percent}%`;
+    compareSameSpeaker.textContent = data.same_speaker_likely ? "Same speaker likely" : "Different speaker likely";
+
+    const gRisk = data.genuine_file_ai_risk || {};
+    const tRisk = data.test_file_ai_risk || {};
+    compareGenuineRisk.textContent = gRisk.risk_level ? `${gRisk.risk_score} · ${gRisk.risk_level}` : "--";
+    compareTestRisk.textContent = tRisk.risk_level ? `${tRisk.risk_score} · ${tRisk.risk_level}` : "--";
+
+    compareStatus.textContent = "Comparison complete.";
+  } catch (e) {
+    compareStatus.textContent = `Request failed: ${e}`;
+  } finally {
+    compareBtn.disabled = false;
+  }
+});
